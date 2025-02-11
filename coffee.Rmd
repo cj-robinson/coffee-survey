@@ -1,0 +1,740 @@
+---
+title: "coffee"
+author: "CJ Robinson"
+date: "2023-11-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(snakecase)
+library(ggridges)
+library(janitor)
+library(ggcorrplot)
+
+
+theme_personal <- function(base_size = 8, base_family = "Arial") {
+  theme_grey(base_size = base_size, base_family = base_family) %+replace%
+    theme(
+      # drop minor gridlines and axis-ticks
+      panel.grid.minor = element_blank(),
+      axis.ticks = element_blank(),
+      # change font elements/family
+      text = element_text(family = "Arial", size = base_size),
+      axis.text = element_text( color = "black", size = base_size),
+      axis.title = element_text( size = rel(1.33)),
+      axis.title.x = element_text(margin = margin(0.5, 0, 0, 0, unit = "cm")),
+      axis.title.y = element_text(margin = margin(0, 0.5, 0, 0, unit = "cm"), angle =90),
+      plot.title = element_text(face = "bold", size = rel(1.67), hjust = .5, vjust = 5),
+      plot.title.position = "plot",
+      plot.subtitle = element_text(size = 16, margin = margin(0.2, 0, 1, 0, unit = "cm"), hjust = 0),
+      plot.caption = element_text(size = 10, margin = margin(1, 0, 0, 0, unit = "cm"), hjust = 1),
+      # change plot colors for the background/panel elements
+      plot.background = element_rect(fill = "white", color = NA),
+      panel.background = element_rect(fill = "white", color = NA),
+      panel.grid.major =  element_line(color = "#d0d0d0"),
+      panel.border = element_blank(),
+      # shrinks margin and simplify the strip/facet elements
+      plot.margin = margin(0.5, 1, 0.5, 1, unit = "cm"),
+      strip.background = element_blank(),
+      strip.text = element_text(size = rel(1.33), face = "bold")
+    )
+}
+```
+
+```{r}
+coffee <- read_csv("/Users/cjrobinson/Documents/Data/coffee /GACTT_RESULTS_ANONYMIZED.csv") %>% 
+  clean_names() %>% 
+  mutate(lastly_what_was_your_favorite_overall_coffee = 
+           recode(lastly_what_was_your_favorite_overall_coffee, 'Coffee A' = "Coffee A - Light Roasted", 
+                  'Coffee B' = "Coffee B - Medium Roasted",
+                  'Coffee C' = "Coffee C - Dark Roasted",
+                  'Coffee D' = "Coffee D - Light Roasted (Fermented)"))
+```
+
+# Demographics
+
+```{r}
+coffee %>% 
+  group_by(what_is_your_age) %>% 
+  count()
+  ggplot(aes(y = (factor(what_is_your_age, levels= c('<18 years old', "18-24 years old", "25-34 years old", "35-44 years old", "45-54 years old", "55-64 years old", ">65 years old"))))) + 
+  geom_histogram(stat = 'count') + 
+  theme_personal() 
+```
+
+```{r}
+coffee %>% 
+  ggplot(aes(x = gender)) +
+  geom_histogram(stat = 'count') + 
+  coord_flip() +
+  theme_minimal()
+```
+
+
+```{r}
+coffee %>% 
+  filter(how_many_cups_of_coffee_do_you_typically_drink_per_day != "NA") %>% 
+  ggplot(aes(x = factor(how_many_cups_of_coffee_do_you_typically_drink_per_day, levels = c("Less than 1", "1", "2", "3", "4", "More than 4")))) +
+  geom_histogram(stat = 'count') + 
+  coord_flip() + 
+  scale_x_discrete(limits=rev) + 
+  xlab("Cups of Coffee Per Day") + 
+  ylab("Responses") + 
+  theme_minimal()
+```
+
+
+```{r}
+coffee %>% 
+  filter(how_strong_do_you_like_your_coffee != "NA") %>% 
+  group_by(how_strong_do_you_like_your_coffee) %>% 
+  count() %>% 
+  ggplot(aes(x = factor(how_strong_do_you_like_your_coffee, levels = c("Weak", "Somewhat light","Medium", "Somewhat strong", "Very strong")), y = n)) + 
+  geom_histogram(stat = 'identity') + 
+  coord_flip() + 
+  ylab("Responses") + 
+  scale_x_discrete(limits=rev) + 
+  theme_minimal()
+```
+
+
+```{r}
+coffee %>% 
+  filter(what_is_your_favorite_coffee_drink != "NA") %>% 
+  group_by(what_is_your_favorite_coffee_drink) %>% 
+  count() %>% 
+  ggplot(aes(x = reorder(what_is_your_favorite_coffee_drink, n), y = n)) + 
+  geom_histogram(stat = 'identity') + 
+  coord_flip() + 
+  ylab("Responses") + 
+  theme_minimal()
+```
+
+
+
+```{r}
+coffee %>% 
+  filter(do_you_work_from_home_or_in_person != "NA") %>% 
+  group_by(do_you_work_from_home_or_in_person) %>% 
+  count() %>% 
+  ggplot(aes(x = reorder(do_you_work_from_home_or_in_person, n), y = n)) + 
+  geom_histogram(stat = 'identity') + 
+  coord_flip() + 
+  ylab("Responses") + 
+  theme_minimal()
+```
+
+```{r}
+coffee %>% 
+  filter(in_total_much_money_do_you_typically_spend_on_coffee_in_a_month != "NA") %>% 
+  group_by(in_total_much_money_do_you_typically_spend_on_coffee_in_a_month) %>% 
+  count() %>% 
+  ggplot(
+    aes(x = factor(in_total_much_money_do_you_typically_spend_on_coffee_in_a_month, 
+                   levels = c("<$20", "$20-$40", "$40-$60", "$60-$80", "$80-$100", ">$100")), 
+        y = n))+ 
+  geom_histogram(stat = 'identity') + 
+  coord_flip() + 
+  scale_x_discrete(limits=rev) + 
+  ylab("Responses") + 
+  theme_minimal()
+```
+
+
+
+
+```{r}
+coffee %>% 
+  filter(what_roast_level_of_coffee_do_you_prefer != "NA") %>% 
+  group_by(what_roast_level_of_coffee_do_you_prefer) %>% 
+  count() %>% 
+  ggplot(aes(x = reorder(what_roast_level_of_coffee_do_you_prefer, n), y = n)) + 
+  geom_histogram(stat = 'identity') + 
+  coord_flip() + 
+  xlab("Cups of Coffee Per Day") + 
+  ylab("Responses") + 
+  theme_minimal()
+```
+```{r}
+coffee %>% 
+  filter(lastly_how_would_you_rate_your_own_coffee_expertise != "NA") %>% 
+  group_by(lastly_how_would_you_rate_your_own_coffee_expertise) %>% 
+  count() %>% 
+  ggplot(aes(x = reorder(lastly_how_would_you_rate_your_own_coffee_expertise, lastly_how_would_you_rate_your_own_coffee_expertise), y = n)) + 
+  geom_histogram(stat = 'identity') + 
+  ylab("Responses") + 
+  theme_minimal()
+```
+
+```{r}
+graphing.function <- function(var_name) {
+  method_names <- coffee %>% 
+    select(starts_with(toString(var_name)),
+           -var_name) %>% 
+    colnames()
+
+  true.tally <- function(x) {
+    sum(x == "TRUE", na.rm = TRUE) / n()
+  }
+    
+  coffee %>% 
+    select(method_names) %>% 
+    summarize(percentage = sapply(., FUN = true.tally)) %>% 
+    add_column(category = snakecase::to_title_case(gsub(paste(toString(var_name),"_", sep = ''), "", method_names))) %>% 
+    ggplot(., aes(x = reorder(category, percentage), y = percentage)) + 
+    geom_bar(stat = 'identity', position = position_dodge2()) + 
+    xlab(snakecase::to_title_case(var_name)) + 
+    ylab("Responses") + 
+    scale_y_continuous(labels = scales::percent) +
+    coord_flip() +
+    theme_minimal()
+}
+
+graphing.function('where_do_you_typically_drink_coffee')
+```
+
+```{r}
+graphing.function('how_do_you_brew_coffee_at_home')
+```
+
+
+```{r}
+graphing.function('on_the_go_where_do_you_typically_purchase_coffee')
+```
+
+
+```{r}
+graphing.function('do_you_usually_add_anything_to_your_coffee')
+```
+
+
+```{r}
+graphing.function('what_kind_of_dairy_do_you_add')
+```
+
+
+```{r}
+graphing.function('what_kind_of_sugar_or_sweetener_do_you_add')
+```
+
+```{r}
+graphing.function('what_kind_of_flavorings_do_you_add')
+```
+```{r}
+graphing.function('why_do_you_drink_coffee')
+```
+
+
+------------------------------------------------------------------------
+
+## Coffee Testing
+
+
+```{r}
+coffee %>% 
+  filter(!is.na(lastly_what_was_your_favorite_overall_coffee)) %>% 
+  group_by(lastly_what_was_your_favorite_overall_coffee) %>% 
+  count() %>% 
+  ggplot(aes(x = factor(lastly_what_was_your_favorite_overall_coffee, 
+                        levels = c("Coffee A", "Coffee B", "Coffee C", "Coffee D")), y = n)) + 
+  geom_histogram(stat = 'identity') + 
+  coord_flip() + 
+  ylab("Responses") + 
+  scale_x_discrete(limits=rev) + 
+  theme_minimal()
+```
+
+```{r}
+coffee %>% 
+  filter(lastly_what_was_your_favorite_overall_coffee != "NA") %>% 
+  group_by(lastly_what_was_your_favorite_overall_coffee) %>% 
+  summarize(count = n()) %>% 
+  mutate(prop = count / sum(count)) %>% 
+  ggplot(aes(x = factor(lastly_what_was_your_favorite_overall_coffee), y = prop)) + 
+  geom_histogram(stat = 'identity', fill = "#3F2305") + 
+  coord_flip() + 
+  xlab("Coffee Type") + 
+  ylab("Percentage of Respondents") + 
+  scale_x_discrete(limits=rev) + 
+  scale_y_continuous(labels = scales::percent) +
+  geom_text(aes(label =  scales::percent(prop, 2)), color = 'white', size = 4,  hjust = 1.3) + 
+  ggtitle("Favorite Coffee Overall") + 
+  theme_personal() +
+  theme( panel.grid.major.y = element_blank()) 
+
+ggsave('images/coffee_pref_hist.png', height = 4, width = 7)
+```
+
+
+```{r}
+coffee %>% 
+  filter(lastly_what_was_your_favorite_overall_coffee != "NA", 
+         lastly_how_would_you_rate_your_own_coffee_expertise != "NA") %>% 
+  group_by(lastly_what_was_your_favorite_overall_coffee, lastly_how_would_you_rate_your_own_coffee_expertise) %>% 
+  count() %>% 
+  ggplot(aes(x = factor(lastly_what_was_your_favorite_overall_coffee, 
+                        levels = c("Coffee A", "Coffee B", "Coffee C", "Coffee D")), y = n)) + 
+  geom_histogram(stat = 'identity') + 
+  facet_wrap(~lastly_how_would_you_rate_your_own_coffee_expertise, scales = 'free') + 
+  ylab("Responses") + 
+  theme_minimal()
+```
+
+
+
+
+
+# Coffee D
+
+```{r}
+graphing.coffee.d.function <- function(var_name) {
+
+
+    method_names <- coffee %>% 
+    select(starts_with(toString(var_name)),
+           -var_name, 
+           -what_kind_of_dairy_do_you_add_other) %>% 
+    colnames()
+   for (i in 1:length(method_names)) {
+      if (i == 1) {
+        new_df <- coffee %>% 
+          select(-what_kind_of_dairy_do_you_add_other) %>% 
+        select(method_names, coffee_d_personal_preference) %>% 
+        filter_at(vars(method_names[i]), any_vars(!is.na(.))) %>% 
+        group_by_at(i) %>% 
+        summarize(coffee_d_avg = mean(coffee_d_personal_preference, na.rm = TRUE)) %>% 
+        pivot_wider(names_from = method_names[i], values_from = coffee_d_avg) %>% 
+        mutate(var_name = method_names[i])
+      } else {
+        new_df <- rbind(new_df,  coffee %>% 
+          select(-what_kind_of_dairy_do_you_add_other) %>% 
+            select(method_names, coffee_d_personal_preference) %>% 
+            filter_at(vars(method_names[i]), any_vars(!is.na(.))) %>% 
+            group_by_at(i) %>% 
+            summarize(coffee_d_avg = mean(coffee_d_personal_preference, na.rm = TRUE)) %>% 
+            pivot_wider(names_from = method_names[i], values_from = coffee_d_avg) %>% 
+            mutate(var_name = method_names[i]))
+      }
+    }
+    new_df %>% 
+    add_column(category = snakecase::to_title_case(gsub(paste(toString(var_name),"_", sep = ''), "", method_names))) %>% 
+    ggplot(., aes(x = reorder(category, `TRUE`), y = `TRUE`)) + 
+    geom_bar(stat = 'identity', position = position_dodge()) + 
+    xlab(snakecase::to_title_case(var_name)) + 
+    ylab("Responses") + 
+    coord_flip() +
+    theme_personal()
+}
+
+tf_questions <- c('where_do_you_typically_drink_coffee', "how_do_you_brew_coffee_at_home", "why_do_you_drink_coffee", "on_the_go_where_do_you_typically_purchase_coffee", "do_you_usually_add_anything_to_your_coffee", "what_kind_of_dairy_do_you_add", "what_kind_of_sugar_or_sweetener_do_you_add")
+
+graphing.coffee.d.function(tf_questions[1])
+```
+
+
+```{r}
+graphing.coffee.d.function(tf_questions[2])
+```
+
+```{r}
+graphing.coffee.d.function(tf_questions[3])
+```
+
+```{r}
+graphing.coffee.d.function(tf_questions[4])
+```
+
+```{r}
+graphing.coffee.d.function(tf_questions[5])
+```
+
+```{r}
+graphing.coffee.d.function(tf_questions[6])
+```
+
+```{r}
+graphing.coffee.d.function(tf_questions[7])
+```
+
+## Demographics 
+
+
+# Demographics
+
+```{r}
+coffee %>% 
+  filter(what_is_your_age != "NA") %>% 
+  group_by(what_is_your_age) %>% 
+  summarize(avg_coffee_d = mean(coffee_d_personal_preference, na.rm = TRUE)) %>% 
+  ggplot(aes(y =factor(what_is_your_age, levels= c('<18 years old', "18-24 years old", "25-34 years old", "35-44 years old", "45-54 years old", "55-64 years old", ">65 years old")) ,
+             x = avg_coffee_d)) + 
+  geom_histogram(stat = 'identity') + 
+  ylab("Responses") + 
+  theme_personal()
+```
+
+```{r}
+coffee %>% 
+  filter(!is.na(gender)) %>% 
+  group_by(gender) %>% 
+  summarize(avg_coffee_d = mean(coffee_d_personal_preference, na.rm = TRUE)) %>% 
+  ggplot(aes(x = avg_coffee_d, y = gender)) +
+  geom_histogram(stat = 'identity') + 
+  theme_personal()
+```
+
+
+```{r}
+coffee %>% 
+  filter(how_many_cups_of_coffee_do_you_typically_drink_per_day != "NA") %>% 
+  group_by(how_many_cups_of_coffee_do_you_typically_drink_per_day) %>% 
+  summarize(avg_coffee_d = mean(coffee_d_personal_preference, na.rm = TRUE)) %>% 
+  ggplot(aes(x = avg_coffee_d, y = factor(how_many_cups_of_coffee_do_you_typically_drink_per_day, levels = c("Less than 1", "1", "2", "3", "4", "More than 4")))) +
+  geom_histogram(stat = 'identity') + 
+  xlab("Cups of Coffee Per Day") + 
+  ylab("Responses") + 
+  theme_personal()
+```
+
+
+```{r}
+coffee %>% 
+  filter(how_strong_do_you_like_your_coffee != "NA") %>% 
+  group_by(how_strong_do_you_like_your_coffee) %>% 
+  summarize(avg_coffee_d = mean(coffee_d_personal_preference, na.rm = TRUE)) %>% 
+  ggplot(aes(x = factor(how_strong_do_you_like_your_coffee, levels = c("Weak", "Somewhat light","Medium", "Somewhat strong", "Very strong")), y = avg_coffee_d)) + 
+  geom_histogram(stat = 'identity') + 
+  coord_flip() + 
+  ylab("Responses") + 
+  scale_x_discrete(limits=rev) + 
+  theme_minimal()
+```
+
+
+```{r}
+coffee %>% 
+  filter(what_is_your_favorite_coffee_drink != "NA") %>% 
+  group_by(what_is_your_favorite_coffee_drink) %>% 
+  summarize(avg_coffee_d = mean(coffee_d_personal_preference, na.rm = TRUE)) %>% 
+  ggplot(aes(x = reorder(what_is_your_favorite_coffee_drink, avg_coffee_d), y = avg_coffee_d)) + 
+  geom_histogram(stat = 'identity') + 
+  coord_flip() + 
+  ylab("Responses") + 
+  theme_personal()
+```
+
+
+
+```{r}
+coffee %>% 
+  filter(do_you_work_from_home_or_in_person != "NA") %>% 
+  group_by(do_you_work_from_home_or_in_person) %>% 
+  summarize(avg_coffee_d = mean(coffee_d_personal_preference, na.rm = TRUE)) %>% 
+  ggplot(aes(x = reorder(do_you_work_from_home_or_in_person, avg_coffee_d), y = avg_coffee_d)) + 
+  geom_histogram(stat = 'identity') + 
+  coord_flip() + 
+  ylab("Responses") + 
+  theme_minimal()
+```
+
+
+```{r}
+coffee %>% 
+  filter(in_total_much_money_do_you_typically_spend_on_coffee_in_a_month != "NA") %>% 
+  group_by(in_total_much_money_do_you_typically_spend_on_coffee_in_a_month) %>% 
+  summarize(avg_coffee_d = mean(coffee_d_personal_preference, na.rm = TRUE)) %>% 
+  ggplot(
+    aes(x = factor(in_total_much_money_do_you_typically_spend_on_coffee_in_a_month, 
+                   levels = c("<$20", "$20-$40", "$40-$60", "$60-$80", "$80-$100", ">$100")), 
+        y = avg_coffee_d))+ 
+  geom_histogram(stat = 'identity') + 
+  coord_flip() + 
+  scale_x_discrete(limits=rev) + 
+  ylab("Responses") + 
+  theme_minimal()
+```
+
+
+
+
+```{r}
+coffee %>% 
+  filter(what_roast_level_of_coffee_do_you_prefer != "NA") %>% 
+  group_by(what_roast_level_of_coffee_do_you_prefer) %>% 
+  summarize(avg_coffee_d = mean(coffee_d_personal_preference, na.rm = TRUE)) %>% 
+  ggplot(aes(x = reorder(what_roast_level_of_coffee_do_you_prefer, avg_coffee_d), y = avg_coffee_d)) + 
+  geom_histogram(stat = 'identity') + 
+  coord_flip() + 
+  xlab("Cups of Coffee Per Day") + 
+  ylab("Responses") + 
+  theme_minimal()
+```
+
+
+
+```{r}
+coffee %>% 
+  filter(lastly_how_would_you_rate_your_own_coffee_expertise != "NA") %>% 
+  group_by(lastly_how_would_you_rate_your_own_coffee_expertise) %>% 
+  summarize(avg_coffee_d = mean(coffee_d_personal_preference, na.rm = TRUE)) %>% 
+  ggplot(aes(x = reorder(lastly_how_would_you_rate_your_own_coffee_expertise, lastly_how_would_you_rate_your_own_coffee_expertise), y = avg_coffee_d)) + 
+  geom_histogram(stat = 'identity') + 
+  ylab("Responses") + 
+  theme_minimal()
+```
+
+
+
+
+
+# Who are these coffee afficinados?
+
+```{r}
+coffee %>% 
+  filter(!is.na(in_total_much_money_do_you_typically_spend_on_coffee_in_a_month)) %>% 
+  ggplot(aes(x = lastly_how_would_you_rate_your_own_coffee_expertise, y = in_total_much_money_do_you_typically_spend_on_coffee_in_a_month)) + 
+  geom_density_ridges() + 
+ theme_personal()
+```
+```{r}
+coffee %>% 
+  filter(!is.na(what_roast_level_of_coffee_do_you_prefer)) %>% 
+  ggplot(aes(x = lastly_how_would_you_rate_your_own_coffee_expertise, y = what_roast_level_of_coffee_do_you_prefer)) + 
+  geom_density_ridges() + 
+ theme_personal()
+```
+
+
+
+```{r}
+model.matrix(~0+., data=coffee %>% select(lastly_how_would_you_rate_your_own_coffee_expertise, what_roast_level_of_coffee_do_you_prefer, in_total_much_money_do_you_typically_spend_on_coffee_in_a_month, what_is_your_favorite_coffee_drink)) %>% 
+  cor(use="pairwise.complete.obs") %>% 
+  ggcorrplot(show.diag=FALSE, type="lower", lab=TRUE, lab_size=1) + 
+  theme(axis.text.x = element_text(size=4),
+        axis.text.y = element_text(size=4))
+```
+
+
+```{r}
+coffee %>% 
+  filter(!is.na(what_is_your_age)) %>% 
+  ggplot(aes(x = coffee_d_personal_preference , y =factor(what_is_your_age, levels= c('<18 years old', "18-24 years old", "25-34 years old", "35-44 years old", "45-54 years old", "55-64 years old", ">65 years old") ))) + 
+  ylab("Age Range") + 
+  xlab("Rating of Coffee D") + 
+  geom_density_ridges(fill = "#B0926A", ) + 
+ theme_personal()
+
+ggsave('images/age_ridges.png')
+```
+
+```{r}
+coffee %>% 
+  filter(!is.na(what_is_your_age)) %>% 
+  ggplot(aes(x = lastly_how_would_you_rate_your_own_coffee_expertise , y =factor(what_is_your_age, levels= c('<18 years old', "18-24 years old", "25-34 years old", "35-44 years old", "45-54 years old", "55-64 years old", ">65 years old") ))) + 
+  ylab("Age Range") + 
+  xlab("Rating of Coffee D") + 
+  geom_density_ridges(fill = "#F3D5A1", ) + 
+ theme_personal()
+
+ggsave('images/age_expertise_ridges.png')
+```
+
+
+```{r}
+coffee %>% 
+  filter(!is.na(household_income)) %>% 
+  ggplot(aes(x = coffee_d_personal_preference , y =factor(household_income, levels= c('<18 years old', "18-24 years old", "25-34 years old", "35-44 years old", "45-54 years old", "55-64 years old", ">65 years old") ))) + 
+  ylab("Age Range") + 
+  xlab("Rating of Coffee D") + 
+  geom_density_ridges(fill = "#D4CAA3", ) + 
+ theme_personal()
+```
+
+
+```{r}
+coffee %>% 
+  filter(!is.na(gender)) %>% 
+  ggplot(aes(x = coffee_d_personal_preference, group = gender)) + 
+  geom_histogram(aes(y = stat(density) ), binwidth = 1) + 
+  facet_wrap(~ gender) +
+  theme_personal()
+```
+
+```{r}
+coffee %>% 
+  filter(gender %in% c("Female", "Male", "Non-binary")) %>% 
+  group_by(gender, how_many_cups_of_coffee_do_you_typically_drink_per_day) %>%
+  summarise (n = n()) %>%
+  mutate(freq = n / sum(n)) %>% 
+  ggplot(aes(x = factor(how_many_cups_of_coffee_do_you_typically_drink_per_day, levels = c("Less than 1", "1", "2", "3", "4", "More than 4")),  y = freq, group = gender)) +
+  geom_bar(stat = 'identity') +
+  facet_grid(~ gender) + 
+  theme_personal()
+```
+
+```{r}
+coffee %>% 
+  filter(gender %in% c("Female", "Male", "Non-binary")) %>% 
+  group_by(gender, how_many_cups_of_coffee_do_you_typically_drink_per_day) %>%
+  summarise (freq = mean(coffee_d_personal_preference, na.rm = TRUE)) %>%
+  ggplot(aes(x = factor(how_many_cups_of_coffee_do_you_typically_drink_per_day, levels = c("Less than 1", "1", "2", "3", "4", "More than 4")),  y = freq, group = gender)) +
+  geom_bar(stat = 'identity') +
+  facet_grid(~ gender) + 
+  theme_personal()
+```
+
+```{r}
+coffee %>% 
+ filter(gender %in% c("Female", "Male", "Non-binary")) %>% 
+  group_by(gender, lastly_how_would_you_rate_your_own_coffee_expertise) %>%
+  summarise (n = n()) %>%
+  mutate(freq = n / sum(n)) %>% 
+  ggplot(aes(x = lastly_how_would_you_rate_your_own_coffee_expertise,  y = freq, group = gender)) +
+  geom_bar(stat = 'identity', fill = "#DDD5B5") +
+  scale_y_continuous(breaks = seq(0,.3, by = .05), labels = scales::percent_format()) +
+  facet_grid(~ gender) + 
+  ylab("Distribution of Participants") +
+  xlab("Personal Rating on Coffee Expertise") +
+  scale_x_continuous(breaks = seq(1, 10, by = 1)) +
+  theme_personal()+
+  theme( panel.grid.major.x = element_blank()) 
+
+ggsave("images/gender_expert_rating.png", width = 7, height = 4)
+```
+
+```{r}
+coffee %>% 
+  filter(gender %in% c("Female", "Male", "Non-binary")) %>% 
+  group_by(gender, lastly_how_would_you_rate_your_own_coffee_expertise) %>%
+  summarise (freq = mean(coffee_d_personal_preference, na.rm = TRUE)) %>%
+  ggplot(aes(x = lastly_how_would_you_rate_your_own_coffee_expertise,  y = freq, group = gender)) +
+  geom_bar(stat = 'identity', fill = "#DDD5B5") +
+  facet_grid(~ gender) + 
+  theme_personal() +
+    ylab("Average Rating of Coffee D") +
+  xlab("Personal Rating on Coffee Expertise") +
+  scale_x_continuous(breaks = seq(1, 10, by = 1)) +
+  theme_personal()+
+  theme( panel.grid.major.x = element_blank()) 
+
+ggsave('images/gender_coffee_d_expertise.png', width = 7, height = 4)
+
+```
+
+
+
+
+```{r}
+coffee %>% 
+  filter(!is.na(household_income)) %>% 
+  ggplot(aes(x = coffee_d_personal_preference , y =household_income )) + 
+  geom_density_ridges() + 
+ theme_personal()
+```
+
+
+
+```{r}
+coffee %>% 
+  filter(!is.na(ethnicity_race)) %>% 
+  ggplot(aes(x = coffee_d_personal_preference, group = ethnicity_race)) + 
+  geom_histogram(aes(y = stat(density) ), binwidth = 1) + 
+  facet_wrap(~ ethnicity_race) +
+  theme_personal()
+```
+
+
+
+```{r}
+coffee %>% 
+  filter(!is.na(political_affiliation)) %>% 
+  ggplot(aes(x = coffee_d_personal_preference, group = political_affiliation)) + 
+  geom_histogram(aes(y = stat(density) ), binwidth = 1) + 
+  facet_wrap(~ political_affiliation) +
+  theme_personal()
+
+```
+
+
+```{r}
+coffee %>% 
+  select(ends_with("personal_preference")) %>% 
+  pivot_longer(cols = ends_with("personal_preference"), names_to = "coffee", values_to = "rating") %>% 
+  mutate(coffee = case_when(coffee == "coffee_a_personal_preference" ~ "Coffee A",
+                            coffee == "coffee_b_personal_preference" ~ "Coffee B",
+                            coffee == "coffee_c_personal_preference" ~ "Coffee C",
+                            coffee == "coffee_d_personal_preference" ~ "Coffee D")) %>% 
+  ggplot(aes(x = rating, group = coffee))+
+  geom_histogram(aes(y = stat(density)), bins = 5, fill = "#38220f") +
+  facet_wrap(~ coffee) +
+  theme_personal() +
+  ylab("") +
+  xlab("Rating") + 
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme( panel.grid.major.x = element_blank()) 
+
+ggsave('images/ratings_histograms.png', height = 4, width = 7)
+```
+
+
+```{r}
+coffee %>% 
+  filter(gender %in% c("Female", "Male", "Non-binary")) %>% 
+  group_by(gender) %>%
+  summarise (coffee_d = mean(coffee_d_personal_preference, na.rm = TRUE)) %>%
+  ggplot(aes(y = gender,  x = coffee_d)) +
+  geom_bar(stat = 'identity', fill = "#3F2305") +
+  theme_personal() +
+  ylab("Gender") +
+  xlab("Average Rating of Coffee D") +
+  geom_text(aes(label =  scales::comma(coffee_d, .01)), color = 'white', size = 3,  hjust = 1.3) + 
+  theme( panel.grid.major.y = element_blank()) 
+
+  ggsave('images/gender_avg_coffee_d.png', height = 4, width = 7)
+```
+
+
+```{r}
+coffee %>% 
+  filter(!is.na(household_income)) %>% 
+  group_by(household_income) %>%
+  summarise (coffee_d = mean(coffee_d_personal_preference, na.rm = TRUE)) %>%
+  ggplot(aes(y = factor(household_income, levels = c("Under $25,000", "$25,000 - $49,999", "$50,000 - $74,999", "$75,000 - $99,999", "$100,000 - $149,999", "$150,000 or more")),  x = coffee_d)) +
+  geom_bar(stat = 'identity', fill = "#363031") +
+  theme_personal() +
+  ylab("Income") +
+  xlab("Average Rating of Coffee D") +
+  geom_text(aes(label =  scales::comma(coffee_d, .01)), color = 'white', size = 3,  hjust = 1.3) + 
+  theme( panel.grid.major.y = element_blank()) +
+    scale_y_discrete(limits=rev) 
+
+  ggsave('images/income_avg_coffee_d.png', height = 4, width = 7)
+```
+
+```{r}
+coffee %>% 
+  filter(!is.na(political_affiliation)) %>% 
+  group_by(political_affiliation) %>%
+  summarise (coffee_d = mean(coffee_d_personal_preference, na.rm = TRUE)) %>%
+  ggplot(aes(y =political_affiliation,  x = coffee_d)) +
+  geom_bar(stat = 'identity', fill = "#363031") +
+  theme_personal() +
+  ylab("Income") +
+  xlab("Average Rating of Coffee D") +
+  geom_text(aes(label =  scales::comma(coffee_d, .01)), color = 'white', size = 3,  hjust = 1.3) + 
+  theme( panel.grid.major.y = element_blank()) +
+    scale_y_discrete(limits=rev) 
+```
+
+```{r}
+coffee %>% 
+  filter(!is.na(political_affiliation), 
+         !is.na(household_income)) %>% 
+  group_by(political_affiliation, household_income) %>% 
+  count() %>% 
+  ggplot(aes(x = political_affiliation, y = household_income, size = n)) +
+  geom_point() +
+  theme_personal()
+```
+
